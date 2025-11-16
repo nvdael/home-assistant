@@ -1,12 +1,15 @@
 // ------------------------------------------------------------
 // Date‑Time Card – Home Assistant Custom Lovelace Card
+// Author: Nathan van Dael
 // ------------------------------------------------------------
 
-import { LitElement, html, css } from "https://cdn.jsdelivr.net/gh/lit/dist@2/all/lit-all.min.js";
+// Importeer alleen uit de moderne 'lit' package.
+// CDN‑link werkt zonder extra installatie, maar je kunt ook een lokaal pakket gebruiken.
+import { LitElement, html, css } from "https://cdn.jsdelivr.net/npm/lit@2.8.0/+esm";
 
-/**
- * Helper: Nederlandse namen van dagen en maanden
- */
+/* ------------------------------------------------------------------
+   Helper‑arrays voor Nederlandse dag‑ en maandnamen
+------------------------------------------------------------------- */
 const DUTCH_DAYS = [
   "Zondag", "Maandag", "Dinsdag", "Woensdag",
   "Donderdag", "Vrijdag", "Zaterdag"
@@ -16,21 +19,26 @@ const DUTCH_MONTHS = [
   "Juli", "Augustus", "September", "Oktober", "November", "December"
 ];
 
+/* ------------------------------------------------------------------
+   Custom Element definitie
+------------------------------------------------------------------- */
 class DateTimeCard extends LitElement {
+  /* ------------------- Reactieve eigenschappen ------------------- */
   static properties = {
-    /** Houdt de huidige datum/tijd bij – wordt iedere seconde geüpdatet */
+    // we houden een Date‑object bij; elke seconde wordt het vernieuwd
     _now: { state: true },
   };
 
+  /* -------------------------- Styling -------------------------- */
   static styles = css`
     :host {
       display: block;
       padding: 1rem;
-      font-family: var(--paper-font-body1_-_font-family, "Roboto", sans-serif);
-      color: var(--primary-text-color);
       background: var(--card-background-color, #fff);
       border-radius: var(--ha-card-border-radius, 12px);
       box-shadow: var(--ha-card-box-shadow, none);
+      font-family: var(--paper-font-body1_-_font-family, "Roboto", sans-serif);
+      color: var(--primary-text-color);
     }
     .time {
       font-size: 2.2rem;
@@ -43,14 +51,15 @@ class DateTimeCard extends LitElement {
     }
   `;
 
+  /* ---------------------- Lifecycle hooks ---------------------- */
   constructor() {
     super();
-    this._now = new Date();
+    this._now = new Date();               // initieel moment
   }
 
   connectedCallback() {
     super.connectedCallback();
-    // Update elke seconde zodat de klok live blijft
+    // Elke seconde bijwerken zodat de klok live loopt
     this._timer = setInterval(() => (this._now = new Date()), 1000);
   }
 
@@ -59,28 +68,23 @@ class DateTimeCard extends LitElement {
     clearInterval(this._timer);
   }
 
-  /**
-   * Formatteer tijd als HH:mm (24‑uur)
-   */
+  /* -------------------------- Helpers -------------------------- */
   _formatTime(date) {
-    const pad = (n) => String(n).padStart(2, "0");
+    const pad = n => String(n).padStart(2, "0");
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
-  /**
-   * Formatteer datum als “Dagnaam dd Maandnaam”
-   */
   _formatDate(date) {
     const dayName = DUTCH_DAYS[date.getDay()];
-    const dayNum = date.getDate();
-    const monthName = DUTCH_MONTHS[date.getMonth()];
-    return `${dayName} ${dayNum} ${monthName}`;
+    const dayNum  = date.getDate();
+    const month   = DUTCH_MONTHS[date.getMonth()];
+    return `${dayName} ${dayNum} ${month}`;
   }
 
+  /* --------------------------- Render -------------------------- */
   render() {
     const timeStr = this._formatTime(this._now);
     const dateStr = this._formatDate(this._now);
-
     return html`
       <div class="time">${timeStr}</div>
       <div class="date">${dateStr}</div>
@@ -88,5 +92,5 @@ class DateTimeCard extends LitElement {
   }
 }
 
-/* Register the card so Home Assistant can find it */
+/* ------------------- Registratie (éénmalig) ------------------- */
 customElements.define("date-time-card", DateTimeCard);
