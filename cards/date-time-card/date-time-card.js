@@ -3,13 +3,9 @@
 // Author: Nathan van Dael
 // ------------------------------------------------------------
 
-// Importeer alleen uit de moderne 'lit' package.
-// CDN‑link werkt zonder extra installatie, maar je kunt ook een lokaal pakket gebruiken.
 import { LitElement, html, css } from "https://cdn.jsdelivr.net/npm/lit@2.8.0/+esm";
 
-/* ------------------------------------------------------------------
-   Helper‑arrays voor Nederlandse dag‑ en maandnamen
-------------------------------------------------------------------- */
+/* ---------- Nederlandse dag‑ en maandnamen ---------- */
 const DUTCH_DAYS = [
   "Zondag", "Maandag", "Dinsdag", "Woensdag",
   "Donderdag", "Vrijdag", "Zaterdag"
@@ -19,17 +15,13 @@ const DUTCH_MONTHS = [
   "Juli", "Augustus", "September", "Oktober", "November", "December"
 ];
 
-/* ------------------------------------------------------------------
-   Custom Element definitie
-------------------------------------------------------------------- */
+/* ------------------- Custom Element ------------------- */
 class DateTimeCard extends LitElement {
-  /* ------------------- Reactieve eigenschappen ------------------- */
   static properties = {
-    // we houden een Date‑object bij; elke seconde wordt het vernieuwd
+    // interne datum/tijd, wordt elke seconde vernieuwd
     _now: { state: true },
   };
 
-  /* -------------------------- Styling -------------------------- */
   static styles = css`
     :host {
       display: block;
@@ -40,26 +32,18 @@ class DateTimeCard extends LitElement {
       font-family: var(--paper-font-body1_-_font-family, "Roboto", sans-serif);
       color: var(--primary-text-color);
     }
-    .time {
-      font-size: 2.2rem;
-      font-weight: 600;
-    }
-    .date {
-      margin-top: 0.4rem;
-      font-size: 1.2rem;
-      opacity: 0.85;
-    }
+    .time { font-size: 2.2rem; font-weight: 600; }
+    .date { margin-top: 0.4rem; font-size: 1.2rem; opacity: 0.85; }
   `;
 
-  /* ---------------------- Lifecycle hooks ---------------------- */
   constructor() {
     super();
-    this._now = new Date();               // initieel moment
+    this._now = new Date();                 // startwaarde
   }
 
   connectedCallback() {
     super.connectedCallback();
-    // Elke seconde bijwerken zodat de klok live loopt
+    // elke seconde updaten → live klok
     this._timer = setInterval(() => (this._now = new Date()), 1000);
   }
 
@@ -68,29 +52,29 @@ class DateTimeCard extends LitElement {
     clearInterval(this._timer);
   }
 
-  /* -------------------------- Helpers -------------------------- */
-  _formatTime(date) {
-    const pad = n => String(n).padStart(2, "0");
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  /* --------- hulpfuncties voor formattering --------- */
+  _pad(n) { return String(n).padStart(2, "0"); }
+
+  _formatTime(d) {
+    return `${this._pad(d.getHours())}:${this._pad(d.getMinutes())}`;
   }
 
-  _formatDate(date) {
-    const dayName = DUTCH_DAYS[date.getDay()];
-    const dayNum  = date.getDate();
-    const month   = DUTCH_MONTHS[date.getMonth()];
-    return `${dayName} ${dayNum} ${month}`;
+  _formatDate(d) {
+    const day   = DUTCH_DAYS[d.getDay()];
+    const month = DUTCH_MONTHS[d.getMonth()];
+    const num   = d.getDate();
+    return `${day} ${num} ${month}`;
   }
 
-  /* --------------------------- Render -------------------------- */
   render() {
-    const timeStr = this._formatTime(this._now);
-    const dateStr = this._formatDate(this._now);
+    const time = this._formatTime(this._now);
+    const date = this._formatDate(this._now);
     return html`
-      <div class="time">${timeStr}</div>
-      <div class="date">${dateStr}</div>
+      <div class="time">${time}</div>
+      <div class="date">${date}</div>
     `;
   }
 }
 
-/* ------------------- Registratie (éénmalig) ------------------- */
+/* ---------- Éénmalige registratie ---------- */
 customElements.define("date-time-card", DateTimeCard);
