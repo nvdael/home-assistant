@@ -16,7 +16,7 @@ const DUTCH_MONTHS = [
   "Juli", "Augustus", "September", "Oktober", "November", "December"
 ];
 
-class LumoDateTimeCard extends LitElement {
+class DateTimeCard extends LitElement {
   static properties = {
     /** Houdt de huidige datum/tijd bij – wordt iedere seconde geüpdatet */
     _now: { state: true },
@@ -89,4 +89,4 @@ class LumoDateTimeCard extends LitElement {
 }
 
 /* Register the card so Home Assistant can find it */
-customElements.define("date-time-card", LumoDateTimeCard);
+customElements.define("date-time-card", DateTimeCard);
