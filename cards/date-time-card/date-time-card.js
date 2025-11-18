@@ -3,108 +3,103 @@
 // Author: Nathan van Dael
 // ------------------------------------------------------------
 
-import { LitElement, html, css } from "https://cdn.jsdelivr.net/npm/lit@2.8.0/+esm";
+import { LitElement, html } from "https://cdn.jsdelivr.net/npm/lit@2.8.0/+esm";
 
-/* ---------- Nederlandse dag‑ en maandnamen ---------- */
-const DUTCH_DAYS = [
-  "Zondag", "Maandag", "Dinsdag", "Woensdag",
-  "Donderdag", "Vrijdag", "Zaterdag"
-];
-const DUTCH_MONTHS = [
-  "Januari", "Februari", "Maart", "April", "Mei", "Juni",
-  "Juli", "Augustus", "September", "Oktober", "November", "December"
-];
-
-/* ------------------- Custom Element ------------------- */
 class DateTimeCard extends LitElement {
-  /* ------------------- Reactieve eigenschappen ------------------- */
-  static properties = {
-    // interne datum/tijd, wordt elke seconde vernieuwd
-    _now:    { state: true },
-    // configuratie‑object dat Home Assistant via setConfig() doorgeeft
-    _config: { state: false },
-  };
+    static properties = {
+        _now: { state: true },   // actual date/time
+        _config: { state: false },  // configuration‑object (title, etc.)
+        _locale: { state: false },  // locale‑object of HA (cached)
+    };
 
-  /* --------------------------- Styling -------------------------- */
-  static styles = css`
-    :host {
-      display: block;
-      padding: 1rem;
-      background: var(--card-background-color, #fff);
-      border-radius: var(--ha-card-border-radius, 12px);
-      box-shadow: var(--ha-card-box-shadow, none);
-      font-family: var(--paper-font-body1_-_font-family, "Roboto", sans-serif);
-      color: var(--primary-text-color);
+    constructor() {
+        super();
+        this._now = new Date();
+        this._config = {};
+        this._locale = null;
     }
-    .title { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.4rem; }
-    .time  { font-size: 2.2rem; font-weight: 600; }
-    .date  { margin-top: 0.4rem; font-size: 1.2rem; opacity: 0.85; }
-  `;
 
-  /* -------------------------- Constructor ------------------------ */
-  constructor() {
-    super();
-    this._now    = new Date();   // startwaarde
-    this._config = {};           // lege fallback‑config
-  }
+    /* ---------- Lifecycle ---------- */
+    connectedCallback() {
+        super.connectedCallback();
 
-  /* ---------------------- Lifecycle hooks ---------------------- */
-  connectedCallback() {
-    super.connectedCallback();
-    // elke seconde updaten → live klok
-    this._timer = setInterval(() => (this._now = new Date()), 1000);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    clearInterval(this._timer);
-  }
-
-  /* -------------------------- setConfig ------------------------
-   * Home Assistant roept deze methode aan zodra de kaart in de UI
-   * wordt geplaatst of wanneer de gebruiker de configuratie wijzigt.
-   *
-   * @param {object} config  –  Het configuratie‑object uit de YAML/GUI.
-   */
-  setConfig(config) {
-    // Optionele validatie – je kunt hier vereiste keys afdwingen
-    if (typeof config !== "object") {
-      throw new Error("Invalid configuration for date-time-card");
+        // Update every 100 ms → smooth seconds‑display
+        this._timer = setInterval(() => {
+            this._now = new Date();
+        }, 100);
     }
-    this._config = config;
-  }
 
-  /* -------------------------- Helpers -------------------------- */
-  _pad(num) { return String(num).padStart(2, "0"); }
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        clearInterval(this._timer);
+    }
 
-  _formatTime(date) {
-    return `${this._pad(date.getHours())}:${this._pad(date.getMinutes())}`;
-  }
+    /* ---------- setConfig (mandatory) ---------- */
+    setConfig(config) {
+        if (typeof config !== "object") {
+            throw new Error("Invalid configuration for date-time-card");
+        }
+        this._config = config;
+    }
 
-  _formatDate(date) {
-    const day   = DUTCH_DAYS[date.getDay()];
-    const month = DUTCH_MONTHS[date.getMonth()];
-    const dayNr = date.getDate();
-    return `${day} ${dayNr} ${month}`;
-  }
+    /* ---------- Keep HA‑locale up‑to‑date ------ */
+    updated(changedProps) {
+        if (changedProps.has("hass")) {
+            if (this.hass && this.hass.locale) {
+                this._locale = this.hass.locale;
+            }
+        }
+    }
 
-  /* --------------------------- Render -------------------------- */
-  render() {
-    const time = this._formatTime(this._now);
-    const date = this._formatDate(this._now);
+    /* ---------- Formatteringshelpers ---------- */
 
-    // Optioneel: een titel uit de configuratie (bijv. title: "Mijn klok")
-    const title = this._config.title
-      ? html`<div class="title">${this._config.title}</div>`
-      : "";
+    /** Format date **met full date** (weekday + day + month + year) */
+    _formatDate(date) {
+        // Fallback‑language if HA has nothing loaded
+        const language = (this.hass && this.hass.language) ? this.hass.language : "en";
 
-    return html`
-      ${title}
-      <div class="time">${time}</div>
-      <div class="date">${date}</div>
+        const opts = {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        };
+
+        return new Intl.DateTimeFormat(language, opts).format(date);
+    }
+
+    /** Format time respecting HA locale + language */
+    _formatTime(date) {
+        // Fallback‑language if HA has nothing loaded
+        const language = (this.hass && this.hass.language) ? this.hass.language : "en";
+
+        const hour12 = this._locale?.time_format === "12";
+
+        const opts = {
+            hour: "numeric",
+            minute: "numeric",
+            hour12,
+        };
+        return new Intl.DateTimeFormat(language, opts).format(date);
+    }
+
+    render() {
+        const time = this._formatTime(this._now);
+        const date = this._formatDate(this._now);
+        const title = this._config.title ?? "";
+
+        return html`
+      <ha-card header="${title}">
+        <div style="padding: 1rem;">
+          <div style="font-size: 2.2rem; font-weight: 600;">${time}</div>
+          <div style="margin-top: 0.4rem; font-size: 1.2rem; opacity: 0.85;">
+          <div style="font-size: 1.5rem; font-weight: 600; color:gray;">${date}</div>
+          </div>
+        </div>
+      </ha-card>
     `;
-  }
+    }
 }
 
-/* ------------------- Registratie (éénmalig) ------------------- */
+/* ------------------- Registration (one-time) ------------------- */
 customElements.define("date-time-card", DateTimeCard);
